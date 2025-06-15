@@ -8,51 +8,61 @@ import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransacti
 import org.jetbrains.exposed.sql.transactions.transaction
 
 @Serializable
-data class ExposedUser(val name: String, val age: Int)
+data class ExposedDiaryRecord(val id: Int, val title: String, val content: String, val location: String)
 
-class UserService(database: Database) {
-    object Users : Table() {
+class DiaryService(database: Database) {
+    object Diary : Table() {
         val id = integer("id").autoIncrement()
-        val name = varchar("name", length = 50)
-        val age = integer("age")
+        val title = varchar("title", length = 50)
+        val content = text("content")
+        val location = varchar("location", length = 50)
 
         override val primaryKey = PrimaryKey(id)
     }
 
     init {
         transaction(database) {
-            SchemaUtils.create(Users)
+            SchemaUtils.create(Diary)
         }
     }
 
-    suspend fun create(user: ExposedUser): Int = dbQuery {
-        Users.insert {
-            it[name] = user.name
-            it[age] = user.age
-        }[Users.id]
+    suspend fun create(diaryRecord: ExposedDiaryRecord): Int = dbQuery {
+        Diary.insert {
+            it[title] = diaryRecord.title
+            it[content] = diaryRecord.content
+            it[location] = diaryRecord.location
+        }[Diary.id]
     }
 
-    suspend fun read(id: Int): ExposedUser? {
+    suspend fun all(): List<ExposedDiaryRecord> {
         return dbQuery {
-            Users.selectAll()
-                .where { Users.id eq id }
-                .map { ExposedUser(it[Users.name], it[Users.age]) }
+            Diary.selectAll()
+                .map { ExposedDiaryRecord(it[Diary.id], it[Diary.title], it[Diary.content], it[Diary.location]) }
+        }
+    }
+
+    suspend fun read(id: Int): ExposedDiaryRecord? {
+        return dbQuery {
+            Diary.selectAll()
+                .where { Diary.id eq id }
+                .map { ExposedDiaryRecord(it[Diary.id], it[Diary.title], it[Diary.content], it[Diary.location]) }
                 .singleOrNull()
         }
     }
 
-    suspend fun update(id: Int, user: ExposedUser) {
+    suspend fun update(id: Int, diaryRecord: ExposedDiaryRecord) {
         dbQuery {
-            Users.update({ Users.id eq id }) {
-                it[name] = user.name
-                it[age] = user.age
+            Diary.update({ Diary.id eq id }) {
+                it[title] = diaryRecord.title
+                it[content] = diaryRecord.content
+                it[location] = diaryRecord.location
             }
         }
     }
 
     suspend fun delete(id: Int) {
         dbQuery {
-            Users.deleteWhere { Users.id.eq(id) }
+            Diary.deleteWhere { Diary.id eq id }
         }
     }
 

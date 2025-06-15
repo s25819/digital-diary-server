@@ -1,16 +1,11 @@
 package pl.pjwstk.edu.pl.s25819.server
 
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
-import io.ktor.server.plugins.calllogging.*
-import io.ktor.server.plugins.contentnegotiation.*
-import io.ktor.server.plugins.openapi.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
-import org.slf4j.event.*
 
 fun Application.configureDatabases() {
     val database = Database.connect(
@@ -19,38 +14,59 @@ fun Application.configureDatabases() {
         driver = "org.h2.Driver",
         password = "",
     )
-    val userService = UserService(database)
+    val diaryService = DiaryService(database)
+
     routing {
-        // Create user
-        post("/users") {
-            val user = call.receive<ExposedUser>()
-            val id = userService.create(user)
+
+        get("/diary/samples") {
+
+            (1..10).forEach() {
+                diaryService.create(
+                    ExposedDiaryRecord(
+                        0, "Diary Record #${it}", "Jakiś tekst", "Warszawa"
+                    )
+                )
+            }
+
+            call.respond(HttpStatusCode.Created, "Generated")
+        }
+
+        // Get all records
+        get("/diary") {
+            val all = diaryService.all()
+            call.respond(HttpStatusCode.OK, all)
+        }
+
+        // Create a diary record
+        post("/diary") {
+            val user = call.receive<ExposedDiaryRecord>()
+            val id = diaryService.create(user)
             call.respond(HttpStatusCode.Created, id)
         }
-        
-        // Read user
-        get("/users/{id}") {
+
+        // Read one diary record
+        get("/diary/{id}") {
             val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
-            val user = userService.read(id)
-            if (user != null) {
-                call.respond(HttpStatusCode.OK, user)
+            val diaryRecord = diaryService.read(id)
+            if (diaryRecord != null) {
+                call.respond(HttpStatusCode.OK, diaryRecord)
             } else {
                 call.respond(HttpStatusCode.NotFound)
             }
         }
-        
-        // Update user
-        put("/users/{id}") {
+
+        // Update diary record
+        put("/diary/{id}") {
             val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
-            val user = call.receive<ExposedUser>()
-            userService.update(id, user)
+            val diaryRecord = call.receive<ExposedDiaryRecord>()
+            diaryService.update(id, diaryRecord)
             call.respond(HttpStatusCode.OK)
         }
-        
-        // Delete user
-        delete("/users/{id}") {
+
+        // Delete a diary record
+        delete("/diary/{id}") {
             val id = call.parameters["id"]?.toInt() ?: throw IllegalArgumentException("Invalid ID")
-            userService.delete(id)
+            diaryService.delete(id)
             call.respond(HttpStatusCode.OK)
         }
     }
